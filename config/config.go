@@ -8,15 +8,22 @@ import (
 )
 
 type Config struct {
-	DBUser            string
-	DBPass            string
-	DBHost            string
-	DBName            string
-	Port              string
-	JWTSecret         string
-	GoogleClientID    string
+	DBUser             string
+	DBPass             string
+	DBHost             string
+	DBPort             string
+	DBName             string
+	Port               string
+	JWTSecret          string
+	GoogleClientID     string
 	GoogleClientSecret string
-	GoogleRedirectURL string
+	GoogleRedirectURL  string
+
+	// SSH config
+	SSHUser string
+	SSHHost string
+	SSHPort string
+	SSHKey  string
 }
 
 func LoadConfig() Config {
@@ -26,17 +33,31 @@ func LoadConfig() Config {
 		DBUser:             os.Getenv("DB_USER"),
 		DBPass:             os.Getenv("DB_PASS"),
 		DBHost:             os.Getenv("DB_HOST"),
+		DBPort:             os.Getenv("DB_PORT"),
 		DBName:             os.Getenv("DB_NAME"),
 		Port:               os.Getenv("PORT"),
 		JWTSecret:          os.Getenv("JWT_SECRET"),
 		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 		GoogleRedirectURL:  os.Getenv("GOOGLE_REDIRECT_URL"),
+
+		SSHUser: os.Getenv("SSH_USER"),
+		SSHHost: os.Getenv("SSH_HOST"),
+		SSHPort: os.Getenv("SSH_PORT"),
+		SSHKey:  os.Getenv("SSH_KEY"),
 	}
 
 	if cfg.Port == "" {
 		cfg.Port = "8080"
 		log.Println("PORT not set, defaulting to 8080")
+	}
+
+	if cfg.DBPort == "" {
+		cfg.DBPort = "3306"
+	}
+
+	if cfg.SSHPort == "" {
+		cfg.SSHPort = "22"
 	}
 
 	return cfg
