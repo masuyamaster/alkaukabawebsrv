@@ -60,5 +60,9 @@ func LoadConfig() Config {
 		cfg.SSHPort = "22"
 	}
 
+	if cfg.SSHKey == "" {
+		log.Fatal("SSH_KEY not set in .env")
+	}
+
 	return cfg
 }

@@ -9,6 +9,7 @@ import (
 	"alkaukaba-backend/database"
 	"alkaukaba-backend/models"
 	"alkaukaba-backend/utils"
+
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -172,7 +173,10 @@ func GoogleCallback(c *gin.Context) {
 // ===== Me (protected) =====
 func Me(c *gin.Context) {
 	uidVal, exists := c.Get("user_id")
-	if !exists { c.JSON(http.StatusUnauthorized, gin.H{"error": "no user"}); return }
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "no user"})
+		return
+	}
 	uid := uidVal.(uint)
 	var user models.User
 	if err := database.DB.First(&user, uid).Error; err != nil {
@@ -180,4 +184,78 @@ func Me(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"user": user})
+}
+
+// ===== Update User (name & picture) =====
+type UpdateUserInput struct {
+	Name       string `json:"name"`
+	PictureURL string `json:"picture_url"`
+}
+
+func UpdateUser(c *gin.Context) {
+	uidVal, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	uid := uidVal.(uint)
+
+	var in UpdateUserInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, uid).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	updates := map[string]interface{}{}
+	if in.Name != "" {
+		updates["name"] = in.Name
+	}
+	if in.PictureURL != "" {
+		updates["picture_url"] = in.PictureURL
+	}
+
+	database.DB.Model(&user).Updates(updates)
+	c.JSON(http.StatusOK, gin.H{"message": "user updated", "user": user})
+}
+
+// ===== Update Password (need old password) =====
+type UpdatePasswordInput struct {
+	OldPassword string `json:"old_password" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
+}
+
+func UpdatePassword(c *gin.Context) {
+	uidVal, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	uid := uidVal.(uint)
+
+	var in UpdatePasswordInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, uid).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	if !utils.CheckPasswordHash(in.OldPassword, user.Password) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "old password incorrect"})
+		return
+	}
+
+	hash, _ := utils.HashPassword(in.NewPassword)
+	database.DB.Model(&user).Update("password", hash)
+	c.JSON(http.StatusOK, gin.H{"message": "password updated"})
 }
